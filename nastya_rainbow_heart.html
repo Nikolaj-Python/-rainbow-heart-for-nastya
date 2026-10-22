@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#100824">
+<meta name="description" content="Радужное сердце и послание для Насти">
+<title>Для Насти ❤️</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#100824}
+body{font-family:Arial,Helvetica,sans-serif;-webkit-tap-highlight-color:transparent}
+canvas{display:block;width:100vw;height:100vh;height:100dvh;touch-action:manipulation}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+</style>
+</head>
+<body>
+<canvas id="scene" role="img" aria-label="Космический фон, радужное сердце и послание для Насти"></canvas>
+<p class="sr-only">Настя, я тебя люблю. Ты — моё счастье.</p>
+<script>
+(() => {
+"use strict";
+
+// Текст можно менять здесь, не затрагивая анимацию.
+const MAIN_LINES = ["Настя,", "я тебя люблю"];
+const EXTRA_MESSAGE = "Ты — моё счастье";
+const PARTICLE_COUNT = 30;
+const STAR_COUNT = 65;
+const TYPEWRITER_DELAY_MS = 160;
+const canvas = document.getElementById("scene");
+const ctx = canvas.getContext("2d", {alpha:false});
+
+let width=0, height=0, dpr=1, frame=0;
+let typedMainChars=0, typedExtraChars=0, typeAccumulator=0, lastTime=0;
+const reducedMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const mainCharacterCount=MAIN_LINES.join("\n").length;
+const stars=[], particles=[];
+
+function rand(min,max){return min+Math.random()*(max-min)}
+function rainbowColor(offset=0,saturation=.88){
+  const hue=((frame*1.35+offset)%360+360)%360;
+  return `hsl(${hue} ${saturation*100}% 58%)`;
+}
+function createStars(){
+  stars.length=0;
+  for(let i=0;i<STAR_COUNT;i++) stars.push({
+    x:rand(0,width),y:rand(0,height),size:[1,1.2,1.6,2][Math.floor(Math.random()*4)],
+    phase:rand(0,Math.PI*2),speed:rand(.7,1.8)
+  });
+}
+function createParticles(){
+  particles.length=0;
+  for(let i=0;i<PARTICLE_COUNT;i++) particles.push({
+    x:rand(12,Math.max(13,width-12)),y:rand(0,height),speed:rand(22,60),
+    size:rand(.55,1.05),phase:rand(0,360),drift:rand(-10,10),sway:rand(.6,1.7)
+  });
+}
+function resize(){
+  dpr=Math.min(window.devicePixelRatio||1,2);
+  width=Math.max(1,window.innerWidth);height=Math.max(1,window.innerHeight);
+  canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  createStars();createParticles();drawFrame(0,performance.now());
+}
+function drawNebula(){
+  ctx.fillStyle="#100824";ctx.fillRect(0,0,width,height);
+  const blobs=[
+    [.22,.28,.42,"#24104a"],[.76,.32,.38,"#171a48"],[.53,.75,.42,"#301044"],
+    [.10,.82,.28,"#170f3b"],[.90,.80,.30,"#201044"]
+  ];
+  for(const [nx,ny,radius,color] of blobs){
+    const r=Math.max(width,height)*radius;
+    const g=ctx.createRadialGradient(width*nx,height*ny,0,width*nx,height*ny,r);
+    g.addColorStop(0,color);g.addColorStop(1,"rgba(16,8,36,0)");
+    ctx.fillStyle=g;ctx.fillRect(0,0,width,height);
+  }
+}
+function drawStars(time){
+  for(const s of stars){
+    const b=(Math.sin(time*.001*s.speed+s.phase)+1)/2;
+    ctx.globalAlpha=.28+b*.72;
+    ctx.fillStyle=b>.82?"#fff":b>.42?"#bca8ff":"#65518f";
+    ctx.beginPath();ctx.arc(s.x,s.y,s.size,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+function heartPoint(a,scale,cx,cy){
+  const x=16*Math.pow(Math.sin(a),3);
+  const y=13*Math.cos(a)-5*Math.cos(2*a)-2*Math.cos(3*a)-Math.cos(4*a);
+  return [cx+x*scale,cy-y*scale];
+}
+function traceHeart(scale,cx,cy){
+  ctx.beginPath();const steps=220;
+  for(let i=0;i<=steps;i++){
+    const [x,y]=heartPoint(Math.PI*2*i/steps,scale,cx,cy);
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+}
+function drawHeart(){
+  const cx=width/2,cy=height*.48;
+  const base=Math.min(18.5,width/39,height/31);
+  const phase=frame%42;
+  const beat=.045*Math.exp(-Math.pow(phase-5,2)/10)+.035*Math.exp(-Math.pow(phase-13,2)/10);
+  const scale=Math.max(5.5,base)*(reducedMotion?1:1+beat);
+
+  traceHeart(scale,cx,cy);ctx.save();ctx.lineJoin="round";ctx.lineCap="round";
+  ctx.strokeStyle="rgba(181,91,255,.12)";ctx.lineWidth=17;ctx.shadowColor="#9c4dff";ctx.shadowBlur=30;ctx.stroke();ctx.restore();
+
+  for(let i=3;i>=0;i--){
+    traceHeart(scale+(3-i)*.55,cx,cy);ctx.save();ctx.lineJoin="round";ctx.lineCap="round";
+    ctx.strokeStyle=rainbowColor(i*9);ctx.globalAlpha=.12+(3-i)*.055;
+    ctx.lineWidth=2+i*1.7;ctx.shadowColor=rainbowColor(i*9);ctx.shadowBlur=8+i*5;
+    ctx.stroke();ctx.restore();
+  }
+  traceHeart(scale,cx,cy);
+  const g=ctx.createLinearGradient(cx-scale*16,cy-scale*8,cx+scale*16,cy+scale*8);
+  for(let i=0;i<=6;i++)g.addColorStop(i/6,rainbowColor(i*52));
+  ctx.save();ctx.strokeStyle=g;ctx.lineWidth=2.1;ctx.shadowColor="#ff78f4";ctx.shadowBlur=10;ctx.stroke();ctx.restore();
+}
+function traceTinyHeart(x,y,scale){
+  ctx.beginPath();
+  for(let i=0;i<=36;i++){
+    const a=Math.PI*2*i/36;
+    const px=x+16*Math.pow(Math.sin(a),3)*scale;
+    const py=y-(13*Math.cos(a)-5*Math.cos(2*a)-2*Math.cos(3*a)-Math.cos(4*a))*scale;
+    if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  }
+  ctx.closePath();
+}
+function drawParticles(dt){
+  for(const p of particles){
+    if(!reducedMotion){
+      p.y+=p.speed*dt;
+      p.x+=Math.sin(frame*.018*p.sway+p.phase)*p.drift*dt*.22;
+    }
+    if(p.y>height+28){p.y=rand(-100,-20);p.x=rand(12,Math.max(13,width-12));p.speed=rand(22,60);p.size=rand(.55,1.05);p.phase=rand(0,360)}
+    if(p.x< -25)p.x=width+20;if(p.x>width+25)p.x=-20;
+    traceTinyHeart(p.x,p.y,p.size);ctx.save();
+    ctx.strokeStyle=rainbowColor(p.phase+80);ctx.globalAlpha=.88;ctx.lineWidth=1.2;
+    ctx.shadowColor=rainbowColor(p.phase+80);ctx.shadowBlur=7;ctx.stroke();ctx.restore();
+  }
+}
+function drawRainbowLine(text,cx,y,fontSize,offset){
+  if(!text)return;
+  ctx.save();ctx.font=`700 ${fontSize}px Arial,Helvetica,sans-serif`;
+  ctx.textBaseline="middle";ctx.textAlign="left";ctx.lineJoin="round";
+  const chars=Array.from(text),widths=chars.map(ch=>ctx.measureText(ch).width);
+  const gap=Math.max(.2,fontSize*.015);
+  const total=widths.reduce((sum,w)=>sum+w,0)+Math.max(0,chars.length-1)*gap;
+  let x=cx-total/2;
+  for(let i=0;i<chars.length;i++){
+    ctx.fillStyle=rainbowColor(offset+i*22);ctx.shadowColor=rainbowColor(offset+i*22);
+    ctx.shadowBlur=8;ctx.fillText(chars[i],x,y);x+=widths[i]+gap;
+  }
+  ctx.restore();
+}
+function drawTypedText(){
+  const visible=MAIN_LINES.join("\n").slice(0,typedMainChars);
+  const lines=visible.split("\\n");
+  const compact=width<430;
+  const font=Math.max(17,Math.min(compact?24:29,width*.064));
+  const cx=width/2,cy=height*.48,gap=font*1.55,startY=cy-gap*.52;
+  lines.forEach((line,i)=>drawRainbowLine(line,cx,startY+i*gap,font,i*90));
+  const extra=EXTRA_MESSAGE.slice(0,typedExtraChars);
+  if(extra){
+    const y=cy+Math.max(70,Math.min(height*.13,100));
+    const extraFont=Math.max(16,Math.min(compact?22:26,width*.058));
+    drawRainbowLine(extra,cx,y,extraFont,180);
+  }
+}
+function updateTypewriter(ms){
+  if(reducedMotion){typedMainChars=mainCharacterCount;typedExtraChars=EXTRA_MESSAGE.length;return}
+  typeAccumulator+=ms;
+  while(typeAccumulator>=TYPEWRITER_DELAY_MS){
+    typeAccumulator-=TYPEWRITER_DELAY_MS;
+    if(typedMainChars<mainCharacterCount)typedMainChars++;
+    else if(typedExtraChars<EXTRA_MESSAGE.length)typedExtraChars++;
+    else break;
+  }
+}
+function drawFrame(dt,time=performance.now()){
+  drawNebula();drawStars(time);drawParticles(dt);drawHeart();drawTypedText();
+}
+function animate(time){
+  if(!lastTime)lastTime=time;
+  const ms=Math.min(50,time-lastTime);lastTime=time;
+  updateTypewriter(ms);drawFrame(ms/1000,time);frame+=2;
+  requestAnimationFrame(animate);
+}
+canvas.addEventListener("click",()=>{
+  typedMainChars=0;typedExtraChars=0;typeAccumulator=0;
+});
+window.addEventListener("resize",resize,{passive:true});
+resize();requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
